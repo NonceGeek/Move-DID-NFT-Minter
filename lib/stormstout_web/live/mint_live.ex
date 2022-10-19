@@ -28,6 +28,18 @@ defmodule StormstoutWeb.MintLive do
   end
 
   @impl true
+  def handle_event("transfer", _attrs, socket) do
+    # NOTICE
+    # change to_address && amount here.
+    payload = %{
+      to: "0x2df41622c0c1baabaa73b2c24360d205e23e803959ebbcb0e5b80462165893ed",
+      amount: "100000000"
+    }
+
+    {:noreply, push_event(socket, "transfer", payload)}
+  end
+
+  @impl true
   def handle_event("mint-succeed", %{"hash" => hash}, socket) do
     {:ok, client} = AptosRPC.connect()
 
@@ -111,6 +123,7 @@ defmodule StormstoutWeb.MintLive do
           <h5 class="text-xl font-bold leading-none text-gray-900 dark:text-white">Mint NFT</h5>
         </div>
         <div class="flow-root">
+        <button phx-click="transfer"> Transfer 1 APT to MainWallet</button>
         <.form let={f} for={@changeset} phx-change="validate" phx-submit="save">
           <div class="mb-6">
             <%= label f, :collection_name, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300" do %>

@@ -17,10 +17,42 @@ export const Aptos = {
   mounted () {
     const message = 'This is a simple message'
     const nonce = '123'
-    let account
+    let wallet
 
     window.addEventListener('load', async () => {
-      account = await connect()
+      wallet = await connect()
+    })
+
+    window.addEventListener('phx:transfer', async (e) => {
+      console.log('e.detail:', e.detail)
+
+      const { to, amount } = e.detail
+      if (!amount|| !to) return
+
+      const payload = {
+        type: 'entry_function_payload',
+        function: `0x1::coin::transfer`,
+        type_arguments: [MARKET_COINT_TYPE],
+        arguments: [
+          to,
+          `${amount}`
+        ]
+      }
+
+      try {
+        console.log('wallet:', wallet)
+        const address = await wallet.account()
+				console.log('address:' + address)
+
+        const result = await wallet.signAndSubmitTransaction(payload)
+
+				console.log('transfer:', result)
+
+      } catch (error) {
+        console.log('transfer: ', error)
+      } finally {
+        console.log('finally')
+      }
     })
 
     window.addEventListener('phx:connect-petra', async () => {
@@ -34,152 +66,13 @@ export const Aptos = {
         console.log('response', response)
         const { address, signature } = response
         login(address, signature)
-        account = response
+        wallet = await connect()
+        // wallet = response
       } catch (error) {
         console.log('Sign Message Error:', error)
       }
     })
 
-    window.addEventListener('phx:mint-token', async (e) => {
-      account = await connect()
-      console.log('account', account)
-      console.log('e.detail:', e.detail)
-
-      const { name, image, description, collection_name: collection, is_collection_created: isCollectionCreated } = e.detail
-      if (!account || !collection || !name || !description || !image) return
-
-      try {
-        const address = account.address.toString()
-
-        if (!isCollectionCreated) {
-          await createCollection(collection)
-        }
-
-        const result = await window.aptos.signAndSubmitTransaction(
-          createTokenPayload(collection, name, description, image, address)
-        )
-
-        this.pushEvent('mint-succeed', { hash: result.hash })
-      } catch (error) {
-        console.log('Error create NFT: ', error)
-        this.pushEvent('mint-failed', {})
-      } finally {
-        console.log('finally')
-      }
-    })
-
-    window.addEventListener('phx:buy-token', async (e) => {
-      const { creator, collection_name: collection, name, property_version: propertyVersion } = e.detail.token
-      const { price, order_id: orderId } = e.detail
-
-      const payload = {
-        type: 'entry_function_payload',
-        function: `${MARKET_ADDRESS}::marketplace::buy_token`,
-        type_arguments: [MARKET_COINT_TYPE],
-        arguments: [
-          MARKET_ADDRESS,
-          MARKET_NAME,
-          creator,
-          collection,
-          name,
-          `${propertyVersion}`,
-          `${price}`,
-          `${orderId}`
-        ]
-      }
-
-      try {
-        const result = await window.aptos.signAndSubmitTransaction(payload)
-
-        this.pushEvent('buy-succeed', { hash: result.hash })
-      } catch (error) {
-        console.log('Error buy NFT: ', error)
-      }
-    })
-
-    window.addEventListener('phx:list-token', async (e) => {
-      const { creator, collection_name: collection, name, property_version: propertyVersion } = e.detail.token
-      const { price } = e.detail
-
-      const payload = {
-        type: 'entry_function_payload',
-        function: `${MARKET_ADDRESS}::marketplace::list_token`,
-        type_arguments: [MARKET_COINT_TYPE],
-        arguments: [
-          MARKET_ADDRESS,
-          MARKET_NAME,
-          creator,
-          collection,
-          name,
-          `${propertyVersion}`,
-          price
-        ]
-      }
-
-      console.log('payload:', payload)
-
-      try {
-        const result = await window.aptos.signAndSubmitTransaction(payload)
-
-        this.pushEvent('list-succeed', { hash: result.hash })
-      } catch (error) {
-        console.log('Error list NFT: ', error)
-      }
-    })
-  }
-}
-
-async function createCollection (collection) {
-  await window.aptos.signAndSubmitTransaction(
-    createCollectionPayload(
-      collection,
-      'stormstout',
-      'https://aptos-nft-marketplace.fly.dev/'
-    )
-  )
-}
-
-function createCollectionPayload (name, description, uri) {
-  return {
-    type: 'entry_function_payload',
-    function: '0x3::token::create_collection_script',
-    type_arguments: [],
-    arguments: [
-      name,
-      description,
-      uri,
-      MAX_U64_BIG_INT.toString(),
-      [false, false, false]
-    ]
-  }
-}
-
-function createTokenPayload (
-  collection,
-  name,
-  description,
-  uri,
-  royaltyPayee
-) {
-  return {
-    type: 'entry_function_payload',
-    function: '0x3::token::create_token_script',
-    type_arguments: [],
-    arguments: [
-      collection,
-      name,
-      description,
-      '1',
-      MAX_U64_BIG_INT.toString(),
-      uri,
-      royaltyPayee,
-      100,
-      0,
-      [false, false, false, false, false],
-      [],
-      [],
-      []
-    ]
   }
 }
 
